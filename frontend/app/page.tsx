@@ -1,80 +1,25 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-
-type Screen =
-  | "home"
-  | "login"
-  | "avatar"
-  | "mode"
-  | "game"
-  | "results";
-
-type QuestionResponse = {
-  question: string;
-  answer: number;
-};
-
-type NumpadKey = `${number}` | "clear" | "next";
-
-type AnswerStatus = "idle" | "correct" | "wrong" | "timeout";
-
-type SessionState = {
-  studentName: string;
-  selectedAvatar: string;
-  selectedMode: string;
-};
-
-const avatars = ["🦁", "🐼", "🐯", "🦊", "🐸", "🐵"];
-const speedNames = [
-  "Rocket Ray",
-  "Flash Fox",
-  "Turbo Tiger",
-  "Speedy Panda",
-  "Lightning Leo",
-];
-const GARAGE_TIME_LIMIT = 60;
-const SESSION_STORAGE_KEY = "multiplyx-session";
-const QUESTION_API_URL = "http://127.0.0.1:5001/question";
-const NUMPAD_KEYS: NumpadKey[] = [
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "clear",
-  "0",
-  "next",
-];
-
-const getQuestionColorClass = (answerStatus: AnswerStatus) => {
-  switch (answerStatus) {
-    case "correct":
-      return "text-green-600";
-    case "wrong":
-      return "text-red-600";
-    case "timeout":
-      return "text-orange-500";
-    default:
-      return "text-blue-700";
-  }
-};
-
-const getFeedbackPanelClass = (answerStatus: AnswerStatus) => {
-  switch (answerStatus) {
-    case "correct":
-      return "bg-green-100 text-green-700";
-    case "wrong":
-      return "bg-red-100 text-red-700";
-    case "timeout":
-      return "bg-orange-100 text-orange-700";
-    default:
-      return "bg-yellow-100 text-gray-700";
-  }
-};
+import AvatarScreen from "@/components/AvatarScreen";
+import HomeScreen from "@/components/HomeScreen";
+import LoginScreen from "@/components/LoginScreen";
+import {
+  avatars,
+  GARAGE_TIME_LIMIT,
+  getFeedbackPanelClass,
+  getQuestionColorClass,
+  NUMPAD_KEYS,
+  QUESTION_API_URL,
+  SESSION_STORAGE_KEY,
+  speedNames,
+} from "@/lib/gameHelpers";
+import type {
+  AnswerStatus,
+  NumpadKey,
+  QuestionResponse,
+  Screen,
+  SessionState,
+} from "@/types/game";
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
@@ -354,130 +299,46 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-yellow-200 to-pink-200 px-6 py-8">
       {screen === "home" && (
-        <div className="w-full max-w-xl rounded-3xl bg-white p-10 text-center shadow-2xl">
-          <h1 className="mb-4 text-5xl font-extrabold text-purple-700">
-            MultiplyX 🎯
-          </h1>
-          <p className="mb-8 text-lg text-gray-700">
-            Learn tables with speed, fun, and cool rewards.
-          </p>
-
-          <div className="flex flex-col gap-4">
-            <button
-              onClick={() => {
-                setComingSoonMessage("");
-                setScreen("login");
-              }}
-              className="rounded-2xl bg-purple-600 px-6 py-4 text-lg font-bold text-white hover:bg-purple-700"
-            >
-              I’m a Student
-            </button>
-
-            <button
-              onClick={() => showComingSoon("Teacher")}
-              className="rounded-2xl bg-blue-500 px-6 py-4 text-lg font-bold text-white hover:bg-blue-600"
-            >
-              I’m a Teacher
-            </button>
-
-            <button
-              onClick={() => showComingSoon("Parent")}
-              className="rounded-2xl bg-green-500 px-6 py-4 text-lg font-bold text-white hover:bg-green-600"
-            >
-              I’m a Parent
-            </button>
-          </div>
-
-          {comingSoonMessage && (
-            <div className="mt-6 rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
-              {comingSoonMessage}
-            </div>
-          )}
-
-          {(studentName || selectedAvatar) && (
-            <button
-              onClick={() => {
-                setComingSoonMessage("");
-                if (!studentName) {
-                  setScreen("login");
-                  return;
-                }
-                if (!selectedAvatar) {
-                  setScreen("avatar");
-                  return;
-                }
-                setScreen("mode");
-              }}
-              className="mt-6 rounded-2xl border-2 border-purple-300 px-6 py-3 text-sm font-bold text-purple-700 hover:bg-purple-50"
-            >
-              Continue previous session ↗
-            </button>
-          )}
-        </div>
+        <HomeScreen
+          comingSoonMessage={comingSoonMessage}
+          hasSavedSession={Boolean(studentName || selectedAvatar)}
+          onStudentClick={() => {
+            setComingSoonMessage("");
+            setScreen("login");
+          }}
+          onTeacherClick={() => showComingSoon("Teacher")}
+          onParentClick={() => showComingSoon("Parent")}
+          onContinueSession={() => {
+            setComingSoonMessage("");
+            if (!studentName) {
+              setScreen("login");
+              return;
+            }
+            if (!selectedAvatar) {
+              setScreen("avatar");
+              return;
+            }
+            setScreen("mode");
+          }}
+        />
       )}
 
       {screen === "login" && (
-        <div className="w-full max-w-xl rounded-3xl bg-white p-10 shadow-2xl">
-          <h2 className="mb-6 text-center text-4xl font-extrabold text-purple-700">
-            Student Login
-          </h2>
-
-          <label className="mb-2 block text-lg font-semibold text-gray-700">
-            Pick your speed name
-          </label>
-          <select
-            value={studentName}
-            onChange={(e) => setStudentName(e.target.value)}
-            className="mb-6 w-full rounded-xl border border-gray-300 p-4 text-lg"
-          >
-            <option value="">Select a cool name</option>
-            {speedNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => setScreen("avatar")}
-            disabled={!studentName}
-            className="w-full rounded-2xl bg-purple-600 px-6 py-4 text-lg font-bold text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            Continue
-          </button>
-        </div>
+        <LoginScreen
+          studentName={studentName}
+          speedNames={speedNames}
+          onStudentNameChange={setStudentName}
+          onContinue={() => setScreen("avatar")}
+        />
       )}
 
       {screen === "avatar" && (
-        <div className="w-full max-w-2xl rounded-3xl bg-white p-10 shadow-2xl">
-          <h2 className="mb-6 text-center text-4xl font-extrabold text-purple-700">
-            Choose Your Avatar
-          </h2>
-
-          <div className="mb-8 grid grid-cols-3 gap-4">
-            {avatars.map((avatar) => (
-              <button
-                key={avatar}
-                onClick={() => setSelectedAvatar(avatar)}
-                className={`rounded-2xl p-6 text-5xl shadow ${
-                  selectedAvatar === avatar
-                    ? "bg-purple-200 ring-4 ring-purple-500"
-                    : "bg-yellow-100"
-                }`}
-              >
-                {avatar}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setScreen("mode")}
-            disabled={!selectedAvatar}
-            className="w-full rounded-2xl bg-purple-600 px-6 py-4 text-lg font-bold text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            Continue
-          </button>
-        </div>
+        <AvatarScreen
+          avatars={avatars}
+          selectedAvatar={selectedAvatar}
+          onAvatarSelect={setSelectedAvatar}
+          onContinue={() => setScreen("mode")}
+        />
       )}
 
       {screen === "mode" && (
