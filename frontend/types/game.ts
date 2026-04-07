@@ -11,7 +11,7 @@ export type QuestionResponse = {
   answer: number;
 };
 
-export type NumpadKey = `${number}` | "clear" | "next";
+export type NumpadKey = `${number}` | "clear" | "submit";
 
 export type AnswerStatus = "idle" | "correct" | "wrong" | "timeout";
 

@@ -26,7 +26,7 @@ export const NUMPAD_KEYS: NumpadKey[] = [
   "9",
   "clear",
   "0",
-  "next",
+  "submit",
 ];
 
 export const getQuestionColorClass = (answerStatus: AnswerStatus) => {
@@ -52,5 +52,31 @@ export const getFeedbackPanelClass = (answerStatus: AnswerStatus) => {
       return "bg-orange-100 text-orange-700";
     default:
       return "bg-yellow-100 text-gray-700";
+  }
+};
+
+export const getQuestionAnimationClass = (answerStatus: AnswerStatus) => {
+  switch (answerStatus) {
+    case "correct":
+      return "animate-answer-pop";
+    case "wrong":
+      return "animate-answer-shake";
+    case "timeout":
+      return "animate-answer-pulse";
+    default:
+      return "";
+  }
+};
+
+export const getFeedbackAnimationClass = (answerStatus: AnswerStatus) => {
+  switch (answerStatus) {
+    case "correct":
+      return "animate-feedback-success";
+    case "wrong":
+      return "animate-feedback-error";
+    case "timeout":
+      return "animate-feedback-timeout";
+    default:
+      return "";
   }
 };

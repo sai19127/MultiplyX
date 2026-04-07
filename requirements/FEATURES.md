@@ -2,7 +2,7 @@
 
 ## Overview
 
-MultiplyX is a multiplication practice game with a student-focused front end and a lightweight backend that serves random multiplication questions.
+MultiplyX is a multiplication practice game with a student-focused frontend and a lightweight backend that serves random multiplication questions.
 
 ## Current Product Scope
 
@@ -19,8 +19,8 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 3. User selects a speed name from a predefined list.
 4. User selects an avatar.
 5. User chooses a play mode.
-6. User plays multiplication questions.
-7. User sees a results screen at the end of a timed Garage session or when leaving the round flow.
+6. User answers multiplication questions in a continuous gameplay loop.
+7. User sees a results screen at the end of a timed Garage session.
 
 ## Frontend Features
 
@@ -52,20 +52,28 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 
 - Shows student name and avatar.
 - Shows mode, current question number, score, coins, streak, and Garage timer when relevant.
-- Shows a `Next up:` preview using a prefetched backend question.
-- Shows the current multiplication question.
+- Shows summary info cards for questions played and current question.
+- Shows a subtle `Next up:` preview using a prefetched backend question.
+- Shows the current multiplication question as the main visual focus.
 - Shows an answer input field.
-- Shows an on-screen number pad with keys `1-9`, `0`, `Clear`, and `Next`.
+- Shows an on-screen number pad.
 - Uses answer-state color changes for idle, correct, wrong, and timeout states.
 - Shows a feedback panel for answer outcomes and guidance.
 
 ### Number Pad and Input Behavior
 
 - The number pad is always visible during gameplay.
-- `Clear` resets the current input.
-- `Next` skips the current question and advances immediately.
+- The number pad includes:
+- digits `1-9`
+- digit `0`
+- `C` for clear
+- `✓ Submit` for answer submission
+
+- `C` clears the entire current input.
+- `✓ Submit` triggers the same answer-check logic as manual submission.
+- There is no backspace key.
 - There is no separate `Check Answer` button.
-- Answer validation happens automatically when the typed answer reaches the digit length of the correct answer.
+- Keyboard `Enter` also submits the current answer.
 
 ### Answer Handling
 
@@ -73,19 +81,22 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 - Adds 10 score points.
 - Adds 5 coins.
 - Increases streak by 1.
-- Shows success feedback.
-- Automatically advances to the next question after a short delay.
+- Increases correct answer count by 1.
+- Updates best streak when a new highest streak is reached.
+- Sets the answer state to `correct`.
+- Immediately advances to the next question.
 
 - Wrong answer:
 - Resets streak to 0.
 - Deducts 2 coins, but never below 0.
 - Shows the correct answer in feedback.
-- Automatically advances to the next question after a short delay.
+- Sets the answer state to `wrong`.
+- Immediately advances to the next question.
 
-- Manual skip:
-- Increases questions played count.
-- Resets streak to 0.
-- Advances to the next question.
+- Timeout:
+- Sets the answer state to `timeout`.
+- Shows timeout feedback.
+- In Garage mode, immediately ends the session and moves to the results screen.
 
 ### Session Persistence
 
@@ -94,12 +105,35 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 - The user can continue the previous session from the home screen.
 - Back to Home clears the saved session.
 
-### Results Screen
+## Gameplay State Tracking
 
-- Shows final score.
-- Shows total coins earned.
-- Shows number of questions played.
-- Shows selected mode summary.
+- `score` is tracked during gameplay.
+- `coins` are tracked during gameplay.
+- `streak` is tracked during gameplay.
+- `bestStreak` tracks the highest streak reached in the current session.
+- `questionsAnswered` tracks all answered or advanced questions shown during play.
+- `correctAnswersCount` tracks only correctly answered questions.
+
+## Results Screen
+
+- Results are speed-first rather than score-first.
+- Primary metric:
+- `Speed`
+- formula: `correctAnswersCount / 60`
+- displayed to 2 decimal places
+- labeled as `correct answers per second`
+
+- Secondary metric:
+- `Correct Answers`
+- shows the total number of correctly answered questions
+
+- Supporting stats:
+- Coins Earned
+- Questions Played
+- Best Streak
+
+- Mode Summary remains visible.
+- Score is still shown as supporting context, but not as the primary results metric.
 - Provides actions for `Play Again` and `Back to Home`.
 
 ## Game Modes
@@ -109,13 +143,13 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 - Uses a single overall round timer of 60 seconds.
 - The timer does not reset for each question.
 - Questions continue indefinitely until the 60-second timer ends.
-- When time reaches zero, the game shows timeout feedback and then moves to the results screen.
+- When time reaches zero, the game shows timeout feedback and then immediately moves to the results screen.
 
 ### Jamming Mode
 
 - Has no timer.
 - Questions continue indefinitely.
-- The learner can keep answering or skipping questions without a hard question-count cap.
+- The learner can keep answering questions without a hard question-count cap.
 
 ## Question Flow Requirements
 
@@ -126,9 +160,55 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 
 - The next question is prefetched while the current question is on screen.
 - The `Next up:` label shows the prefetched question.
-- Advancing to the next question should use the prefetched question when available.
-- After each question is shown, another next question should be prefetched.
+- Advancing to the next question uses the prefetched question when available.
+- After each question is shown, another next question is prefetched.
 - The total number of questions is not fixed.
+
+## Gameplay Animations
+
+- Micro-animations are state-driven and tied to the current answer status.
+
+### Correct Answer Animation
+
+- The current question shows a short pop/glow effect.
+- The feedback panel shows a soft success highlight.
+
+### Wrong Answer Animation
+
+- The current question shows a short shake effect.
+- The feedback panel shows a subtle red error flash.
+
+### Timeout Animation
+
+- The current question shows a warning-style pulse.
+- The feedback panel shows a timeout pulse that is visually different from the wrong-answer state.
+
+### Animation Reset Behavior
+
+- Animations reset when the next question is shown.
+- The answer state is reset to `idle` on the next question.
+
+## Responsive Layout Requirements
+
+- The game screen is designed to work across:
+- small phones
+- larger phones
+- tablets
+- desktop screens
+
+- The game layout remains vertical and game-focused.
+- The current question remains the visual focus at every screen size.
+- The num pad is touch-friendly across all breakpoints.
+- The game container uses responsive max widths and spacing.
+- Typography, padding, gaps, and button sizing scale by breakpoint.
+- The game should remain usable without horizontal overflow on small screens.
+
+### Touch-Friendly UI Goals
+
+- Large tap targets for num pad buttons.
+- Larger answer input field on bigger screens.
+- Clear visual distinction between number keys, clear, and submit actions.
+- Comfortable spacing between question, input, num pad, stats, and feedback.
 
 ## Backend Features
 
@@ -151,6 +231,7 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 
 - The app uses a bright, playful gradient background.
 - The interface is card-based with rounded corners and prominent buttons.
+- The gameplay area uses soft gradients and layered cards to keep the current question visually prominent.
 - Gameplay feedback uses color coding:
 - Blue for neutral/idle.
 - Green for correct.
@@ -161,4 +242,3 @@ MultiplyX is a multiplication practice game with a student-focused front end and
 
 - Teacher and Parent experiences are planned but not yet implemented.
 - Current development is focused on the student gameplay loop.
-

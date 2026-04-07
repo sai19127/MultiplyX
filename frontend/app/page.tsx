@@ -6,7 +6,9 @@ import LoginScreen from "@/components/LoginScreen";
 import {
   avatars,
   GARAGE_TIME_LIMIT,
+  getFeedbackAnimationClass,
   getFeedbackPanelClass,
+  getQuestionAnimationClass,
   getQuestionColorClass,
   NUMPAD_KEYS,
   QUESTION_API_URL,
@@ -35,6 +37,8 @@ export default function Home() {
   const [score, setScore] = useState(0);
   const [coins, setCoins] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [timeLeft, setTimeLeft] = useState(GARAGE_TIME_LIMIT);
   const [round, setRound] = useState(1);
@@ -48,6 +52,8 @@ export default function Home() {
     setScore(0);
     setCoins(0);
     setStreak(0);
+    setBestStreak(0);
+    setCorrectAnswersCount(0);
     setFeedback("");
     setTimeLeft(GARAGE_TIME_LIMIT);
     setRound(1);
@@ -129,10 +135,6 @@ export default function Home() {
     [getQuestion, nextQuestion, showQuestion],
   );
 
-  const finishOrAdvance = (nextAnsweredCount: number, nextRound: number) => {
-    void moveToNextQuestion(nextRound);
-  };
-
   const checkAnswer = useCallback(() => {
     if (
       correctAnswer === null ||
@@ -152,13 +154,15 @@ export default function Home() {
     if (numericAnswer === correctAnswer) {
       setScore((prev) => prev + 10);
       setCoins((prev) => prev + 5);
-      setStreak((prev) => prev + 1);
+      setCorrectAnswersCount((prev) => prev + 1);
+      setStreak((prev) => {
+        const nextStreak = prev + 1;
+        setBestStreak((best) => Math.max(best, nextStreak));
+        return nextStreak;
+      });
       setAnswerStatus("correct");
       setFeedback("Correct! +10 score and +5 coins 🎉");
-
-      window.setTimeout(() => {
-        void moveToNextQuestion(nextRound);
-      }, 900);
+      void moveToNextQuestion(nextRound);
       return;
     }
 
@@ -166,10 +170,7 @@ export default function Home() {
     setCoins((prev) => Math.max(0, prev - 2));
     setAnswerStatus("wrong");
     setFeedback(`Oops! The right answer is ${correctAnswer}. -2 coins ✨`);
-
-    window.setTimeout(() => {
-      void moveToNextQuestion(nextRound);
-    }, 900);
+    void moveToNextQuestion(nextRound);
   }, [
     correctAnswer,
     isAnswerLocked,
@@ -178,15 +179,6 @@ export default function Home() {
     round,
     userAnswer,
   ]);
-
-  const handleSkipQuestion = () => {
-    const nextAnsweredCount = questionsAnswered + 1;
-    const nextRound = round + 1;
-
-    setQuestionsAnswered(nextAnsweredCount);
-    setStreak(0);
-    finishOrAdvance(nextAnsweredCount, nextRound);
-  };
 
   useEffect(() => {
     const restoreSessionId = window.setTimeout(() => {
@@ -239,10 +231,7 @@ export default function Home() {
         setIsAnswerLocked(true);
         setAnswerStatus("timeout");
         setFeedback("Time’s up! Garage round complete ⏰");
-
-        window.setTimeout(() => {
-          finishGame("Time round complete! Great speed practice 🚀");
-        }, 900);
+        finishGame("Time round complete! Great speed practice 🚀");
       }, 0);
 
       return () => window.clearTimeout(timeoutId);
@@ -260,41 +249,29 @@ export default function Home() {
     timeLeft,
   ]);
 
-  const handleNumpadPress = (key: NumpadKey) => {
-    if (isAnswerLocked) {
-      return;
-    }
+  const handleNumpadPress = useCallback(
+    (key: NumpadKey) => {
+      if (isAnswerLocked) {
+        return;
+      }
 
-    if (key === "next") {
-      handleSkipQuestion();
-      return;
-    }
+      if (key === "submit") {
+        checkAnswer();
+        return;
+      }
 
-    setUserAnswer((prev) => {
+      setUserAnswer((prev) => {
       if (key === "clear") {
         return "";
       }
 
       return `${prev}${key}`;
     });
-  };
+  },
+  [checkAnswer, isAnswerLocked],
+  );
 
-  useEffect(() => {
-    if (
-      screen !== "game" ||
-      correctAnswer === null ||
-      isAnswerLocked ||
-      userAnswer.trim() === ""
-    ) {
-      return;
-    }
-
-    if (userAnswer.trim().length < String(correctAnswer).length) {
-      return;
-    }
-
-    checkAnswer();
-  }, [screen, correctAnswer, isAnswerLocked, userAnswer, checkAnswer]);
+  const speedMetric = (correctAnswersCount / 60).toFixed(2);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-yellow-200 to-pink-200 px-6 py-8">
@@ -381,96 +358,109 @@ export default function Home() {
       )}
 
       {screen === "game" && (
-        <div className="w-full max-w-2xl rounded-3xl bg-white p-10 text-center shadow-2xl">
-          <div className="mb-3 text-xl font-bold text-gray-700">
+        <div className="w-full max-w-sm rounded-[1.75rem] bg-white/95 p-4 text-center shadow-2xl ring-1 ring-white/70 backdrop-blur sm:max-w-2xl sm:p-6 md:max-w-3xl md:rounded-[2rem] md:p-8 xl:max-w-5xl xl:p-10">
+          <div className="mb-4 text-xl font-bold text-gray-700 sm:mb-5 sm:text-2xl md:text-3xl">
             {studentName} {selectedAvatar}
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center justify-center gap-3 text-sm font-bold">
-            <div className="rounded-full bg-purple-100 px-4 py-2 text-purple-700">
+          <div className="mb-5 grid grid-cols-2 gap-2 text-xs font-bold sm:mb-6 sm:gap-3 sm:text-sm lg:grid-cols-3">
+            <div className="rounded-2xl bg-purple-100 px-3 py-3 text-purple-700 shadow-sm sm:px-5 sm:py-4">
               Mode: {selectedMode}
             </div>
-            <div className="rounded-full bg-blue-100 px-4 py-2 text-blue-700">
+            <div className="rounded-2xl bg-blue-100 px-3 py-3 text-blue-700 shadow-sm sm:px-5 sm:py-4">
               Question: {round}
             </div>
-            <div className="rounded-full bg-green-100 px-4 py-2 text-green-700">
+            <div className="rounded-2xl bg-green-100 px-3 py-3 text-green-700 shadow-sm sm:px-5 sm:py-4">
               Score: {score}
             </div>
-            <div className="rounded-full bg-yellow-100 px-4 py-2 text-yellow-700">
+            <div className="rounded-2xl bg-yellow-100 px-3 py-3 text-yellow-700 shadow-sm sm:px-5 sm:py-4">
               Coins: {coins}
             </div>
-            <div className="rounded-full bg-orange-100 px-4 py-2 text-orange-700">
+            <div className="rounded-2xl bg-orange-100 px-3 py-3 text-orange-700 shadow-sm sm:px-5 sm:py-4">
               Streak: {streak}
             </div>
             {selectedMode === "Garage" && (
-              <div className="rounded-full bg-red-100 px-4 py-2 text-red-700">
+              <div className="col-span-2 rounded-2xl bg-red-100 px-3 py-3 text-red-700 shadow-sm sm:col-span-1 sm:px-5 sm:py-4">
                 Time Left: {timeLeft}s
               </div>
             )}
           </div>
 
-          <div className="mb-8 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-indigo-50 px-5 py-4 text-left">
+          <div className="mb-6 grid gap-3 sm:mb-8 sm:gap-4 md:grid-cols-2">
+            <div className="rounded-3xl bg-indigo-50 px-4 py-4 text-left shadow-sm sm:px-5 sm:py-5 md:px-6">
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-500">
                 Questions Played
               </div>
-              <div className="mt-2 text-3xl font-extrabold text-indigo-700">
+              <div className="mt-2 text-3xl font-extrabold text-indigo-700 sm:mt-3 sm:text-4xl">
                 {questionsAnswered}
               </div>
             </div>
-            <div className="rounded-2xl bg-pink-50 px-5 py-4 text-left">
+            <div className="rounded-3xl bg-pink-50 px-4 py-4 text-left shadow-sm sm:px-5 sm:py-5 md:px-6">
               <div className="text-xs font-bold uppercase tracking-[0.2em] text-pink-500">
                 Current Question
               </div>
-              <div className="mt-2 text-3xl font-extrabold text-pink-700">
+              <div className="mt-2 text-3xl font-extrabold text-pink-700 sm:mt-3 sm:text-4xl">
                 {round}
               </div>
             </div>
           </div>
 
-          <div className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-gray-400">
+          <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400 sm:mb-4 sm:text-xs md:text-sm">
             Next up: {nextQuestion?.question ?? "Loading..."}
           </div>
 
-          <h2
-            className={`mb-8 text-5xl font-extrabold ${getQuestionColorClass(answerStatus)}`}
-          >
-            {question}
-          </h2>
+          <div className="mb-6 rounded-[1.75rem] bg-gradient-to-br from-sky-50 via-white to-fuchsia-50 px-3 py-4 shadow-inner sm:mb-8 sm:px-6 sm:py-6 md:rounded-[2rem] md:px-8 md:py-8 lg:px-10">
+            <h2
+              className={`mb-4 text-4xl font-extrabold leading-none sm:mb-5 sm:text-6xl md:mb-6 md:text-7xl lg:text-8xl ${getQuestionColorClass(answerStatus)} ${getQuestionAnimationClass(answerStatus)}`}
+            >
+              {question}
+            </h2>
 
-          <input
-            type="number"
-            disabled={isAnswerLocked}
-            value={userAnswer}
-            onChange={(e) => setUserAnswer(e.target.value)}
+            <input
+              type="number"
+              disabled={isAnswerLocked}
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                checkAnswer();
+              }
+            }}
             placeholder="Type your answer"
-            className="mb-4 w-full rounded-2xl border border-gray-300 p-4 text-center text-2xl font-bold outline-none focus:border-purple-500"
-          />
+              className="mb-4 w-full rounded-3xl border-2 border-white bg-white/90 px-4 py-4 text-center text-2xl font-extrabold text-slate-800 shadow-sm outline-none focus:border-purple-400 sm:mb-5 sm:px-5 sm:py-5 sm:text-3xl md:px-6 md:py-6 md:text-4xl"
+            />
 
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-            Number Pad
-          </div>
+            <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-400 sm:text-xs md:text-sm">
+              Number Pad
+            </div>
 
-          <div className="mb-6 grid grid-cols-3 gap-3">
-            {NUMPAD_KEYS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                disabled={isAnswerLocked}
-                onClick={() => handleNumpadPress(key)}
-                className={`rounded-2xl px-4 py-4 text-xl font-extrabold shadow-sm transition hover:scale-[1.01] disabled:opacity-50 ${
-                  key === "clear" || key === "next"
-                    ? "bg-gray-200 text-gray-700"
-                    : "bg-slate-100 text-slate-800"
-                }`}
-              >
-                {key === "clear" ? "Clear" : key === "next" ? "Next" : key}
-              </button>
-            ))}
+            <div className="mb-1 grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+              {NUMPAD_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={isAnswerLocked}
+                  onClick={() => handleNumpadPress(key)}
+                  className={`min-h-16 rounded-2xl px-2 py-3 text-xl font-extrabold shadow-md transition hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50 sm:min-h-20 sm:rounded-3xl sm:px-4 sm:py-4 sm:text-2xl md:min-h-24 md:px-5 md:py-5 md:text-3xl ${
+                    key === "submit"
+                      ? "bg-green-500 text-white shadow-green-200"
+                      : key === "clear"
+                        ? "bg-amber-400 text-amber-950 shadow-amber-200"
+                        : "bg-slate-100 text-slate-800 shadow-slate-200"
+                  }`}
+                >
+                  {key === "clear"
+                    ? "C"
+                    : key === "submit"
+                      ? "✓ Submit"
+                      : key}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div
-            className={`min-h-[64px] rounded-2xl p-4 text-lg font-semibold ${getFeedbackPanelClass(answerStatus)}`}
+            className={`min-h-[84px] rounded-3xl p-4 text-base font-semibold shadow-sm sm:min-h-[92px] sm:p-5 sm:text-lg md:p-6 md:text-xl ${getFeedbackPanelClass(answerStatus)} ${getFeedbackAnimationClass(answerStatus)}`}
           >
             {feedback || "Give it your best shot! 🌟"}
           </div>
@@ -484,16 +474,33 @@ export default function Home() {
           </h2>
           <p className="mb-8 text-lg text-gray-700">{feedback}</p>
 
-          <div className="mb-8 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-green-100 p-6">
-              <div className="text-sm font-bold text-green-700">Final Score</div>
-              <div className="mt-2 text-3xl font-extrabold text-green-800">{score}</div>
+          <div className="mb-5 rounded-3xl bg-gradient-to-r from-green-400 to-emerald-500 p-8 text-white shadow-lg">
+            <div className="text-sm font-bold uppercase tracking-[0.25em] text-green-50">
+              Speed
             </div>
-            <div className="rounded-2xl bg-yellow-100 p-6">
+            <div className="mt-3 text-6xl font-extrabold leading-none">
+              {speedMetric}
+            </div>
+            <div className="mt-3 text-sm font-semibold text-green-50">
+              correct answers per second
+            </div>
+          </div>
+
+          <div className="mb-8 rounded-3xl bg-blue-50 p-6 text-blue-900 shadow-sm">
+            <div className="text-sm font-bold uppercase tracking-[0.2em] text-blue-500">
+              Correct Answers
+            </div>
+            <div className="mt-2 text-4xl font-extrabold">
+              {correctAnswersCount}
+            </div>
+          </div>
+
+          <div className="mb-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl bg-yellow-100 p-5">
               <div className="text-sm font-bold text-yellow-700">Coins Earned</div>
               <div className="mt-2 text-3xl font-extrabold text-yellow-800">{coins}</div>
             </div>
-            <div className="rounded-2xl bg-orange-100 p-6">
+            <div className="rounded-2xl bg-orange-100 p-5">
               <div className="text-sm font-bold text-orange-700">
                 Questions Played
               </div>
@@ -501,13 +508,22 @@ export default function Home() {
                 {questionsAnswered}
               </div>
             </div>
+            <div className="rounded-2xl bg-purple-100 p-5">
+              <div className="text-sm font-bold text-purple-700">Best Streak</div>
+              <div className="mt-2 text-3xl font-extrabold text-purple-800">
+                {bestStreak}
+              </div>
+            </div>
           </div>
 
           <div className="mb-8 rounded-2xl bg-purple-100 p-5 text-purple-700">
             <div className="text-sm font-bold uppercase tracking-wide">
               Mode Summary
-            </div>
+              </div>
             <div className="mt-2 text-xl font-extrabold">{selectedMode}</div>
+            <div className="mt-3 text-sm font-semibold text-purple-600">
+              Score stays active during gameplay and finished at {score}.
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
